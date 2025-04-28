@@ -2,12 +2,14 @@
 #import <Quartz/Quartz.h>
 #import <ImageIO/ImageIO.h>
 #include <iostream>
+#include <vector>
 
-void listWindowsAndCapture(CGWindowID excludedWindowID) {
+void listWindowsAndCapture() {
     // 1. 현재 열린 창 목록 출력
     std::cout << "Listing all open windows..." << std::endl;
 
     CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
+    CGWindowID stepHowWindowID = 0;
 
     for (NSDictionary* window in (__bridge NSArray*)windowList) {
         NSNumber* windowID = window[(__bridge id)kCGWindowNumber];
@@ -18,22 +20,24 @@ void listWindowsAndCapture(CGWindowID excludedWindowID) {
                   << ", Owner: " << ownerName.UTF8String
                   << ", Title: " << (windowTitle ? windowTitle.UTF8String : "No Title")
                   << std::endl;
+
+        // StepHow 앱의 창 ID 저장
+        if ([ownerName isEqualToString:@"StepHow"]) {
+            stepHowWindowID = windowID.intValue;
+        }
     }
 
     CFRelease(windowList);
 
-    // 2. 특정 창을 제외하고 전체 화면 캡처
-    std::cout << "\nCapturing the screen excluding window ID: " << excludedWindowID << std::endl;
+    // 2. StepHow 앱의 창을 제외하고 전체 화면 캡처
+    std::cout << "\nCapturing the screen excluding StepHow window (ID: " << stepHowWindowID << ")..." << std::endl;
 
-    CGRect screenBounds = CGRectInfinite; // 전체 화면 영역
-    CGWindowListOption options = kCGWindowListOptionOnScreenOnly; // 화면에 표시된 창만 캡처
-
-    // CGWindowListCreateImage 호출: 특정 창 제외
+    // 전체 화면 캡처에서 StepHow 창 제외
     CGImageRef image = CGWindowListCreateImage(
-        screenBounds,                // 캡처할 전체 화면 영역
-        options,                     // 화면에 표시된 창만 포함
-        excludedWindowID,            // 제외할 창의 ID
-        kCGWindowImageDefault        // 기본 이미지 옵션
+        CGRectInfinite,                    // 전체 화면 영역
+        kCGWindowListOptionOnScreenBelowWindow,  // 특정 창 아래의 모든 창 캡처
+        stepHowWindowID,                   // 제외할 StepHow 창 ID
+        kCGWindowImageDefault              // 기본 이미지 옵션
     );
 
     if (image) {
@@ -57,10 +61,7 @@ void listWindowsAndCapture(CGWindowID excludedWindowID) {
 
 int main() {
     @autoreleasepool {
-        // 현재 열린 창 목록과 캡처 테스트
-        // 창 ID 입력 (테스트용, 실제 창 ID로 변경 필요)
-        CGWindowID excludedWindowID = 92261; // 제외할 창의 ID (0은 제외 없음)
-        listWindowsAndCapture(excludedWindowID);
+        listWindowsAndCapture();
     }
     return 0;
 }
